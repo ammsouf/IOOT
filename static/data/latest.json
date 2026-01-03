@@ -1,0 +1,35 @@
+{
+    "latest": {
+        "temperature": 24.7,
+        "humidity": 55.3,
+        "timestamp": "2025-02-01T14:30:00Z"
+    },
+    "history": [
+        {
+            "temperature": 23.5,
+            "humidity": 52.0,
+            "timestamp": "2025-02-01T14:15:00Z"
+        },
+        {
+            "temperature": 24.0,
+            "humidity": 53.5,
+            "timestamp": "2025-02-01T14:20:00Z"
+        },
+        {
+            "temperature": 24.3,
+            "humidity": 54.1,
+            "timestamp": "2025-02-01T14:25:00Z"
+        },
+        {
+            "temperature": 24.7,
+            "humidity": 55.3,
+            "timestamp": "2025-02-01T14:30:00Z"
+        }
+    ],
+    "incident": {
+        "type": "Temperature Spike",
+        "description": "The temperature exceeded the expected range.",
+        "timestamp": "2025-02-01T14:30:00Z",
+        "severity": "High"
+    }
+}

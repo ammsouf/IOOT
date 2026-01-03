@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Monitor - Incident #{{ incident.incident_id }}</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="{% url 'dashboard' %}" class="navbar-brand">IoT Monitor</a>
+            <div class="navbar-user">
+                <div class="nav-links">
+                    <a href="{% url 'dashboard' %}" class="nav-link">Accueil</a>
+                    <a href="{% url 'graph_temp' %}" class="nav-link">Temperature</a>
+                    <a href="{% url 'graph_hum' %}" class="nav-link">Humidite</a>
+                    <a href="{% url 'incident_archive' %}" class="nav-link">Archives</a>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+                    <div class="user-name">
+                        <span>Connecte</span>
+                        <span>{{ user.username }}</span>
+                    </div>
+                </div>
+                <button class="button button-secondary" style="width: auto; margin: 0; padding: 0.6rem 1.2rem;" onclick="window.location.href='{% url 'logout' %}'">Deconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        {% if error %}
+            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); padding: 2rem; border-radius: 16px; text-align: center;">
+                <p style="color: #f87171; font-size: 1.25rem; font-weight: 600;">{{ error }}</p>
+            </div>
+        {% else %}
+            <!-- Incident Hero -->
+            <div class="incident-hero">
+                <h1>Incident #{{ incident.incident_id }}</h1>
+                <div class="incident-status {% if incident.is_active %}active{% else %}resolved{% endif %}">
+                    {% if incident.is_active %}
+                        En Cours
+                    {% else %}
+                        Resolu
+                    {% endif %}
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">Alertes</div>
+                        <div class="info-value">{{ incident.counter }}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Temperature</div>
+                        <div class="info-value">{{ incident.temperature }}C</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Humidite</div>
+                        <div class="info-value">{{ incident.humidity }}%</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Duree</div>
+                        <div class="info-value" style="font-size: 1.25rem;">{{ incident.duration }}</div>
+                    </div>
+                </div>
+
+                {% if incident.operator_1_comment %}
+                    <div class="comment-box">
+                        <h3>Commentaire Operateur</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.6;">{{ incident.operator_1_comment }}</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline-section">
+                <h2>Historique Complet</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Tracabilite de toutes les actions</p>
+
+                <div class="timeline">
+                    {% for entry in history %}
+                        <div class="timeline-item {{ entry.action }}">
+                            <div class="timeline-timestamp">
+                                {{ entry.timestamp|date:"d/m/Y H:i:s" }}
+                            </div>
+                            <div class="timeline-action">
+                                {{ entry.get_action_display }}
+                            </div>
+                            <div class="timeline-description">
+                                {{ entry.description }}
+                            </div>
+                            {% if entry.temperature or entry.humidity or entry.counter_value %}
+                                <div class="timeline-meta">
+                                    {% if entry.temperature %}
+                                        <span class="badge temp">{{ entry.temperature }}C</span>
+                                    {% endif %}
+                                    {% if entry.humidity %}
+                                        <span class="badge hum">{{ entry.humidity }}%</span>
+                                    {% endif %}
+                                    {% if entry.counter_value %}
+                                        <span class="badge counter">Alerte #{{ entry.counter_value }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Aucun historique disponible</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="margin-top: 2.5rem;">
+                <button class="button button-secondary" onclick="window.location.href='{% url 'incident_archive' %}'" style="width: auto;">
+                    Retour aux Archives
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

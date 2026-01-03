@@ -1,0 +1,140 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Monitor - Humidite</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+</head>
+
+<body data-history-url="/api/humidity-history/">
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="{% url 'dashboard' %}" class="navbar-brand">IoT Monitor</a>
+            <div class="navbar-user">
+                <div class="nav-links">
+                    <a href="{% url 'dashboard' %}" class="nav-link">Accueil</a>
+                    <a href="{% url 'graph_temp' %}" class="nav-link">Temperature</a>
+                    <a href="{% url 'graph_hum' %}" class="nav-link active">Humidite</a>
+                    <a href="{% url 'incident_archive' %}" class="nav-link">Archives</a>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+                    <div class="user-name">
+                        <span>Connecte</span>
+                        <span>{{ user.username }}</span>
+                    </div>
+                </div>
+                <button class="button button-secondary" style="width: auto; margin: 0; padding: 0.6rem 1.2rem;" onclick="window.location.href='{% url 'logout' %}'">Deconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <header>
+            <h1>Humidite</h1>
+            <p>Historique et analyse des mesures DHT11</p>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Mesures</div>
+                <div class="stat-value" id="stat-count">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Moyenne</div>
+                <div class="stat-value" id="stat-avg">-- %</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Minimum</div>
+                <div class="stat-value" id="stat-min">-- %</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Maximum</div>
+                <div class="stat-value" id="stat-max">-- %</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-container">
+            <h3>Filtrer par periode</h3>
+            <div class="filter-buttons">
+                <button class="quick-filter-btn active" onclick="setQuickFilter('week')">7 Jours</button>
+                <button class="quick-filter-btn" onclick="setQuickFilter('month')">30 Jours</button>
+                <button class="quick-filter-btn" onclick="setQuickFilter('3months')">3 Mois</button>
+                <button class="quick-filter-btn" onclick="setQuickFilter('all')">Tout</button>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="start-date">Date debut</label>
+                    <input type="date" id="start-date" class="input-field" />
+                </div>
+                <div class="filter-group">
+                    <label for="end-date">Date fin</label>
+                    <input type="date" id="end-date" class="input-field" />
+                </div>
+                <button class="button button-primary" onclick="applyCustomFilter()" style="margin-top: 1.5rem; width: auto; padding: 0.75rem 1.5rem;">Appliquer</button>
+            </div>
+            <div class="data-info" id="data-info">Chargement des donnees...</div>
+        </div>
+
+        <!-- Graph -->
+        <div class="graph-container">
+            <div class="graph-header">
+                <div>
+                    <h2>Humidite (%)</h2>
+                    <div class="graph-subtitle">Evolution dans le temps</div>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="humChart"></canvas>
+            </div>
+            <div class="graph-actions">
+                <button class="button button-secondary" onclick="window.location.href='{% url 'dashboard' %}'" style="width: auto;">Retour</button>
+                <button class="export-btn" onclick="exportData()">Export CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'graph_hum.js' %}"></script>
+    <script>
+        function exportData() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            let url = '/api/humidity-history/';
+            if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+
+            fetch(url).then(r => r.json()).then(json => {
+                if (!json.success) return;
+                let csv = 'Date,Humidite\n';
+                json.data.forEach(r => csv += `${r.timestamp},${r.humidity}\n`);
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `humidite_${json.start_date}_${json.end_date}.csv`;
+                a.click();
+            });
+        }
+
+        // Update stats when data loads
+        const originalLoadData = loadHumidityData;
+        loadHumidityData = async function() {
+            await originalLoadData();
+            const data = humidityChart?.data?.datasets[0]?.data || [];
+            if (data.length > 0) {
+                const avg = (data.reduce((a,b) => a+b, 0) / data.length).toFixed(1);
+                const min = Math.min(...data).toFixed(1);
+                const max = Math.max(...data).toFixed(1);
+                document.getElementById('stat-count').textContent = data.length;
+                document.getElementById('stat-avg').textContent = avg + ' %';
+                document.getElementById('stat-min').textContent = min + ' %';
+                document.getElementById('stat-max').textContent = max + ' %';
+            }
+        };
+    </script>
+</body>
+</html>

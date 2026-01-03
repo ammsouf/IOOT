@@ -1,0 +1,188 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Monitor - Archives</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="{% url 'dashboard' %}" class="navbar-brand">IoT Monitor</a>
+            <div class="navbar-user">
+                <div class="nav-links">
+                    <a href="{% url 'dashboard' %}" class="nav-link">Accueil</a>
+                    <a href="{% url 'graph_temp' %}" class="nav-link">Temperature</a>
+                    <a href="{% url 'graph_hum' %}" class="nav-link">Humidite</a>
+                    <a href="{% url 'incident_archive' %}" class="nav-link active">Archives</a>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+                    <div class="user-name">
+                        <span>Connecte</span>
+                        <span>{{ user.username }}</span>
+                    </div>
+                </div>
+                <button class="button button-secondary" style="width: auto; margin: 0; padding: 0.6rem 1.2rem;" onclick="window.location.href='{% url 'logout' %}'">Deconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <header>
+            <h1>Archives des Incidents</h1>
+            <p>Historique complet avec tracabilite</p>
+        </header>
+
+        <!-- Statistics -->
+        <div class="archive-stats">
+            <div class="archive-stat-card">
+                <div class="archive-stat-icon">📊</div>
+                <div class="archive-stat-value">{{ incidents|length }}</div>
+                <div class="archive-stat-label">Total Incidents</div>
+            </div>
+            <div class="archive-stat-card">
+                <div class="archive-stat-icon">⚡</div>
+                <div class="archive-stat-value" id="active-count">0</div>
+                <div class="archive-stat-label">En Cours</div>
+            </div>
+            <div class="archive-stat-card">
+                <div class="archive-stat-icon">✓</div>
+                <div class="archive-stat-value" id="resolved-count">0</div>
+                <div class="archive-stat-label">Resolus</div>
+            </div>
+            <div class="archive-stat-card">
+                <div class="archive-stat-icon">🔔</div>
+                <div class="archive-stat-value" id="total-alerts">0</div>
+                <div class="archive-stat-label">Total Alertes</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+            <h3>Filtrer les incidents</h3>
+            <div class="filter-options">
+                <div class="filter-chip active" onclick="filterIncidents('all')">Tous</div>
+                <div class="filter-chip" onclick="filterIncidents('active')">En Cours</div>
+                <div class="filter-chip" onclick="filterIncidents('resolved')">Resolus</div>
+                <div class="filter-chip" onclick="filterIncidents('high')">Alertes > 5</div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="incidents-table-wrapper">
+            <table id="incidents-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Alertes</th>
+                        <th>Temp</th>
+                        <th>Hum</th>
+                        <th>Debut</th>
+                        <th>Fin</th>
+                        <th>Duree</th>
+                        <th>Commentaire</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incident in incidents %}
+                        <tr class="{% if incident.is_active %}in-progress{% else %}resolved{% endif %}"
+                            data-status="{% if incident.is_active %}active{% else %}resolved{% endif %}"
+                            data-counter="{{ incident.counter }}">
+                            <td><strong>#{{ incident.incident_id }}</strong></td>
+                            <td>
+                                {% if incident.is_active %}
+                                    <span class="status-badge active">En Cours</span>
+                                {% else %}
+                                    <span class="status-badge resolved">Resolu</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ incident.counter }}</strong></td>
+                            <td>{{ incident.temperature }} C</td>
+                            <td>{{ incident.humidity }} %</td>
+                            <td>{{ incident.start_time|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if incident.end_time %}
+                                    {{ incident.end_time|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span style="color: #f97316;">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ incident.duration }}</td>
+                            <td>{{ incident.operator_1_comment|truncatewords:3|default:"Aucun" }}</td>
+                            <td>
+                                <a href="{% url 'incident_detail' incident.incident_id %}" class="details-link">
+                                    Voir
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="10" class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <div>Aucun incident enregistre</div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <button class="button button-secondary" onclick="window.location.href='{% url 'dashboard' %}'" style="width: auto;">
+                Retour au Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Calculate statistics
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('tbody tr[data-counter]');
+            let totalAlerts = 0;
+            let activeCount = 0;
+            let resolvedCount = 0;
+
+            rows.forEach(row => {
+                totalAlerts += parseInt(row.getAttribute('data-counter') || 0);
+                if (row.getAttribute('data-status') === 'active') {
+                    activeCount++;
+                } else {
+                    resolvedCount++;
+                }
+            });
+
+            document.getElementById('total-alerts').textContent = totalAlerts;
+            document.getElementById('active-count').textContent = activeCount;
+            document.getElementById('resolved-count').textContent = resolvedCount;
+        });
+
+        // Filter incidents
+        function filterIncidents(filter) {
+            const rows = document.querySelectorAll('tbody tr[data-status]');
+            const chips = document.querySelectorAll('.filter-chip');
+
+            chips.forEach(chip => chip.classList.remove('active'));
+            event.target.classList.add('active');
+
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                const counter = parseInt(row.getAttribute('data-counter'));
+
+                let show = false;
+                if (filter === 'all') show = true;
+                else if (filter === 'active' && status === 'active') show = true;
+                else if (filter === 'resolved' && status === 'resolved') show = true;
+                else if (filter === 'high' && counter > 5) show = true;
+
+                row.style.display = show ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

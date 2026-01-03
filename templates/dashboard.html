@@ -1,0 +1,179 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Monitor - Dashboard</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <script src="{% static 'dashboard.js' %}" defer></script>
+    <script src="{% static 'Api.js' %}" defer></script>
+</head>
+
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="{% url 'dashboard' %}" class="navbar-brand">
+                IoT Monitor
+            </a>
+
+            <div class="navbar-user">
+                <div class="nav-links">
+                    <a href="{% url 'dashboard' %}" class="nav-link active">Accueil</a>
+                    <a href="{% url 'graph_temp' %}" class="nav-link">Temperature</a>
+                    <a href="{% url 'graph_hum' %}" class="nav-link">Humidite</a>
+                    <a href="{% url 'incident_archive' %}" class="nav-link">Archives</a>
+                </div>
+
+                <div class="user-info">
+                    <div class="user-avatar">
+                        {{ user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="user-name">
+                        <span>Connecte</span>
+                        <span>{{ user.username }}</span>
+                    </div>
+                </div>
+
+                <button class="button button-secondary" style="width: auto; margin: 0; padding: 0.6rem 1.2rem;" onclick="window.location.href='{% url 'logout' %}'">
+                    Deconnexion
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <header>
+            <h1>Dashboard IoT</h1>
+            <p>Surveillance en temps reel - Capteur DHT11</p>
+        </header>
+
+        <div class="cards">
+            <!-- Carte Temperature -->
+            <div class="card" id="card-temperature">
+                <div>
+                    <div class="card-title">Temperature</div>
+                    <div class="card-subtitle">Derniere mesure</div>
+                    <div class="card-value" id="temp-value">
+                        -- C
+                    </div>
+                    <div class="card-time" id="temp-time">En attente de donnees...</div>
+                </div>
+                <div class="card-footer">
+                    <button class="button button-primary" type="button" onclick="window.location.href='{% url 'graph_temp' %}'">
+                        Voir graphique
+                    </button>
+                </div>
+            </div>
+
+            <!-- Carte Humidite -->
+            <div class="card" id="card-humidity">
+                <div>
+                    <div class="card-title">Humidite</div>
+                    <div class="card-subtitle">Derniere mesure</div>
+                    <div class="card-value" id="hum-value">
+                        -- %
+                    </div>
+                    <div class="card-time" id="hum-time">En attente de donnees...</div>
+                </div>
+                <div class="card-footer">
+                    <button class="button button-primary" type="button" onclick="window.location.href='{% url 'graph_hum' %}'">
+                        Voir graphique
+                    </button>
+                </div>
+            </div>
+
+            <!-- Carte Incident -->
+            <div class="card" id="incident-section">
+                <div class="card-title">Dernier Incident</div>
+                <div class="card-subtitle">
+                    {% if active_incident and active_incident.is_active %}
+                        Incident en cours
+                    {% elif active_incident %}
+                        Incident resolu
+                    {% else %}
+                        Aucun incident
+                    {% endif %}
+                </div>
+
+                {% if active_incident %}
+                    <div style="margin-top: 10px;">
+                        <label><strong>Incident ID:</strong> #{{ active_incident.incident_id }}</label>
+
+                        <label><strong>Status:</strong>
+                            {% if active_incident.is_active %}
+                                <span style="color: #f97316; font-weight: 600;">En cours</span>
+                            {% else %}
+                                <span style="color: #14b8a6; font-weight: 600;">Resolu</span>
+                            {% endif %}
+                        </label>
+
+                        <label><strong>Alertes:</strong> {{ active_incident.counter }}</label>
+                        <label><strong>Temperature:</strong> {{ active_incident.temperature }}C</label>
+                        <label><strong>Humidite:</strong> {{ active_incident.humidity }}%</label>
+                        <label><strong>Debut:</strong> {{ active_incident.start_time|date:"d/m/Y H:i:s" }}</label>
+
+                        {% if active_incident.is_active %}
+                            <label style="margin-top: 15px;"><strong>Commentaire:</strong></label>
+                            <textarea
+                                id="operator_1_comment"
+                                name="operator_1_comment"
+                                rows="3"
+                                class="input-field"
+                                style="margin-top: 5px;">{{ active_incident.operator_1_comment }}</textarea>
+                            <button
+                                class="button button-primary"
+                                style="margin-top: 10px;"
+                                onclick="submitComment({{ active_incident.incident_id }})">
+                                Enregistrer
+                            </button>
+                        {% else %}
+                            <div style="margin-top: 15px;">
+                                <label><strong>Commentaire:</strong></label>
+                                {% if active_incident.operator_1_comment %}
+                                    <div style="background: rgba(20, 184, 166, 0.15); padding: 12px; border-radius: 8px; margin-top: 8px; border-left: 3px solid #14b8a6; color: #cbd5e1;">
+                                        {{ active_incident.operator_1_comment }}
+                                    </div>
+                                {% else %}
+                                    <p style="color: #64748b; font-style: italic; margin-top: 5px;">Aucun commentaire</p>
+                                {% endif %}
+                            </div>
+                            <p style="color: #14b8a6; margin-top: 12px; font-weight: 600; font-size: 0.85rem;">
+                                Incident resolu - Commentaires verrouilles
+                            </p>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p style="margin-top: 15px; color: #64748b;">Aucun incident enregistre.</p>
+                {% endif %}
+
+                <div class="card-footer" style="margin-top: 1rem;">
+                    <button class="button button-secondary" onclick="window.location.href='{% url 'incident_archive' %}'">
+                        Voir tous les incidents
+                    </button>
+                </div>
+            </div>
+
+            <!-- Carte Test API -->
+            <div class="card" id="card-Test">
+                <div>
+                    <div class="card-title">Test API</div>
+                    <div class="card-subtitle">Simulation de mesure</div>
+
+                    <label for="temperatureInput">Temperature:</label>
+                    <input type="number" step="0.1" id="temperatureInput" placeholder="Ex: 25.5" class="input-field" />
+
+                    <label for="humediteInput">Humidite:</label>
+                    <input type="number" step="0.1" id="humediteInput" placeholder="Ex: 60" class="input-field" />
+                </div>
+                <div class="card-footer">
+                    <button class="button button-primary" type="button" onclick="sendData()">
+                        Envoyer les donnees
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
